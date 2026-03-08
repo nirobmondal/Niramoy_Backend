@@ -3,22 +3,31 @@ import express, { Request, Response } from "express";
 import cors from "cors";
 
 import { auth } from "./lib/auth";
+import { notFound } from "./middlewares/notFound";
 const app = express();
 
-app.use(express.json());
-
+// global middlewares
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000", 
+    origin: process.env.FRONTEND_URL || "http://localhost:5000", 
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"], 
     credentials: true, // Allow credentials (cookies, authorization headers, etc.)
   })
 );
+app.use(express.json());
 
+// better auth api's
+app.all("/api/auth/*splat", toNodeHandler(auth));
+
+// testing route
 app.get("/", (req: Request, res: Response) => {
   res.send("Niramoy backend is running.");
 })
 
-app.all("/api/auth/*splat", toNodeHandler(auth));
+// not found api
+app.use(notFound)
+
+// global error handler
+
 
 export default app;

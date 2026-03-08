@@ -6,7 +6,6 @@ declare global {
                 email: string;
                 name: string;
                 role: string;
-                emailVerified: boolean;
             }
         }
     }
