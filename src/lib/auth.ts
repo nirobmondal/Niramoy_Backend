@@ -19,6 +19,14 @@ export const auth = betterAuth({
             phone: {
                 type: "string",
                 required: false
+            },
+            address: {
+                type: "string",
+                required: false
+            },
+            isBanned: {
+                type: "boolean",
+                defaultValue: false
             }
         }
     },

@@ -39,3 +39,5 @@ const auth = (...roles: userRole[]) => {
     }
   }
 }
+
+export default auth;

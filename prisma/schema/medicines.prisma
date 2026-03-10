@@ -1,0 +1,33 @@
+model Medicine {
+  id String @id @default(uuid())
+
+  name        String
+  description String?
+
+  price Decimal @db.Decimal(10,2)
+  stock Int @default(0)
+
+  manufacturer String?
+  imageUrl String?
+
+  dosageForm String
+  strength   String?
+
+  isAvailable Boolean @default(true)
+
+  categoryId String
+  category Category @relation(fields: [categoryId], references: [id])
+
+  sellerId String
+  seller SellerProfile @relation(fields: [sellerId], references: [id])
+
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+  reviews    Review[]
+
+  createdAt DateTime @default(now())
+
+  @@index([name])
+  @@index([categoryId])
+  @@index([sellerId])
+}
