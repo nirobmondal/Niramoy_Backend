@@ -5,7 +5,14 @@ import { sellerController } from "./sellers.controller";
 
 const sellerRouter = Router();
 
-// All routes require authenticated SELLER
+// Create seller profile (any authenticated user can become a seller)
+sellerRouter.post(
+  "/profile",
+  auth(userRole.CUSTOMER),
+  sellerController.createSellerProfile
+);
+
+// All routes below require authenticated SELLER
 sellerRouter.use(auth(userRole.SELLER));
 
 // Medicine management

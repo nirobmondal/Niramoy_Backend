@@ -1,6 +1,26 @@
 import { Request, Response } from "express";
 import { sellerService } from "./sellers.service";
 
+const createSellerProfile = async (req: Request, res: Response) => {
+  try {
+    const profile = await sellerService.createSellerProfile(
+      req.user!.id,
+      req.body
+    );
+
+    res.status(201).json({
+      success: true,
+      message: "Seller profile created successfully",
+      data: profile,
+    });
+  } catch (error: any) {
+    res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || "Failed to create seller profile",
+    });
+  }
+};
+
 const addMedicine = async (req: Request, res: Response) => {
   try {
     const medicine = await sellerService.addMedicine(req.user!.id, req.body);
@@ -137,6 +157,7 @@ const updateOrderStatus = async (req: Request, res: Response) => {
 };
 
 export const sellerController = {
+  createSellerProfile,
   addMedicine,
   editMedicine,
   removeMedicine,

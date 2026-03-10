@@ -9,7 +9,7 @@ const auth = (...roles: userRole[]) => {
         headers: req.headers as any
       });
 
-      console.log(session);
+      // console.log(session);
 
       if (!session) {
         return res.status(401).json({

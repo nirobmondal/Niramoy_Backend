@@ -4,6 +4,7 @@ import cors from "cors";
 
 import { auth } from "./lib/auth";
 import { notFound } from "./middlewares/notFound";
+import sellerRouter from "./modules/sellers/sellers.routes";
 const app = express();
 
 // global middlewares
@@ -23,6 +24,9 @@ app.all("/api/auth/*splat", toNodeHandler(auth));
 app.get("/", (req: Request, res: Response) => {
   res.send("Niramoy backend is running.");
 })
+
+// seller routes
+app.use("/api/seller", sellerRouter);
 
 // not found api
 app.use(notFound)

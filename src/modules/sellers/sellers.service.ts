@@ -1,4 +1,5 @@
 import { OrderStatus } from "../../../generated/prisma/client";
+import { userRole } from "../../constant/role";
 import { prisma } from "../../lib/prisma";
 
 // Valid status transitions
@@ -15,6 +16,47 @@ const CANCELLABLE: OrderStatus[] = [
   OrderStatus.PLACED,
   OrderStatus.PROCESSING,
 ];
+
+// ── Create Seller Profile ─────────────────────────────────────
+interface CreateSellerProfileInput {
+  storeName: string;
+  storeLogo?: string;
+  address: string;
+  contactNumber: string;
+  openingTime: string;
+  closingTime: string;
+  offDay: string;
+}
+
+const createSellerProfile = async (
+  userId: string,
+  data: CreateSellerProfileInput
+) => {
+  const existing = await prisma.sellerProfile.findUnique({
+    where: { userId },
+  });
+
+  if (existing) {
+    throw Object.assign(new Error("Seller profile already exists"), {
+      statusCode: 409,
+    });
+  }
+
+  const [sellerProfile] = await prisma.$transaction([
+    prisma.sellerProfile.create({
+      data: {
+        ...data,
+        userId,
+      },
+    }),
+    prisma.user.update({
+      where: { id: userId },
+      data: { role: userRole.SELLER },
+    }),
+  ]);
+
+  return sellerProfile;
+};
 
 async function getSellerProfileId(userId: string): Promise<string> {
   const profile = await prisma.sellerProfile.findUnique({
@@ -252,6 +294,7 @@ const updateOrderStatus = async (
 };
 
 export const sellerService = {
+  createSellerProfile,
   addMedicine,
   editMedicine,
   removeMedicine,

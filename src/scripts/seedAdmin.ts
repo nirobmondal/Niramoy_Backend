@@ -20,7 +20,6 @@ async function seedAdmin() {
     // if admin already exist then throw error
     if (existingUser) {
       throw new Error("User already exist.");
-      return;
     }
 
     // otherwise create the admin
