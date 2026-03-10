@@ -4,8 +4,13 @@ model SellerProfile {
   userId String @unique
   user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  storeName String?
+  storeName String
   storeLogo String?
+  address String
+  contactNumber String
+  openingTime String
+  closingTime String
+  offDay String
 
   medicines Medicine[]
   sellerOrders SellerOrder[]
