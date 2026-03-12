@@ -2,13 +2,14 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { prisma } from "./prisma";
 import { userRole } from "../constant/role";
+import { config } from "../config";
 
 
 export const auth = betterAuth({
     database: prismaAdapter(prisma, {
         provider: "postgresql", 
     }),
-    trustedOrigins: [process.env.FRONTEND_URL!],
+    trustedOrigins: [config.frontendUrl],
     user: {
         additionalFields: {
             role: {
@@ -34,11 +35,11 @@ export const auth = betterAuth({
         enabled: true, 
         autoSignIn: false
     },
-    baseURL: process.env.BETTER_AUTH_URL, 
+    baseURL: config.betterAuthUrl, 
     socialProviders: {
         google: { 
-            clientId: process.env.GOOGLE_CLIENT_ID as string, 
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET as string, 
+            clientId: config.google.clientId, 
+            clientSecret: config.google.clientSecret, 
             accessType: "offline", 
             prompt: "select_account consent",
         }, 
