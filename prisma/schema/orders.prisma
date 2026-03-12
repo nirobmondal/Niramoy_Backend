@@ -24,6 +24,7 @@ model Order {
   totalPrice Decimal @db.Decimal(10,2)
 
   shippingAddress String
+  shippingCity String
   phone String
   notes String?
 
