@@ -156,6 +156,43 @@ const updateOrderStatus = async (req: Request, res: Response) => {
   }
 };
 
+const getSellerOrderById = async (req: Request, res: Response) => {
+  try {
+    const order = await sellerService.getSellerOrderById(
+      req.user!.id,
+      req.params.id as string
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Order details fetched successfully",
+      data: order,
+    });
+  } catch (error: any) {
+    res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || "Failed to fetch order details",
+    });
+  }
+};
+
+const getDashboard = async (req: Request, res: Response) => {
+  try {
+    const dashboard = await sellerService.getDashboard(req.user!.id);
+
+    res.status(200).json({
+      success: true,
+      message: "Dashboard data fetched successfully",
+      data: dashboard,
+    });
+  } catch (error: any) {
+    res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || "Failed to fetch dashboard data",
+    });
+  }
+};
+
 export const sellerController = {
   createSellerProfile,
   addMedicine,
@@ -164,4 +201,6 @@ export const sellerController = {
   updateStock,
   getOrders,
   updateOrderStatus,
+  getSellerOrderById,
+  getDashboard,
 };

@@ -23,6 +23,10 @@ sellerRouter.patch("/medicines/:id/stock", sellerController.updateStock);
 
 // Order management
 sellerRouter.get("/orders", sellerController.getOrders);
+sellerRouter.get("/orders/:id", sellerController.getSellerOrderById);
 sellerRouter.patch("/orders/:id/status", sellerController.updateOrderStatus);
+
+// Dashboard
+sellerRouter.get("/dashboard", sellerController.getDashboard);
 
 export default sellerRouter;

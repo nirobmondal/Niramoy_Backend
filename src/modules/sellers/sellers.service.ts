@@ -293,6 +293,96 @@ const updateOrderStatus = async (
   return updated;
 };
 
+// ── Get Seller Order By ID ─────────────────────────────────────
+const getSellerOrderById = async (userId: string, sellerOrderId: string) => {
+  const sellerId = await getSellerProfileId(userId);
+
+  const sellerOrder = await prisma.sellerOrder.findUnique({
+    where: { id: sellerOrderId },
+    include: {
+      items: {
+        include: {
+          medicine: {
+            select: {
+              id: true,
+              name: true,
+              price: true,
+              imageUrl: true,
+            },
+          },
+        },
+      },
+      order: {
+        select: {
+          id: true,
+          shippingAddress: true,
+          shippingCity: true,
+          phone: true,
+          notes: true,
+          paymentMethod: true,
+          paymentStatus: true,
+          totalPrice: true,
+          customer: {
+            select: { id: true, name: true, email: true },
+          },
+        },
+      },
+    },
+  });
+
+  if (!sellerOrder) {
+    throw Object.assign(new Error("Order not found"), { statusCode: 404 });
+  }
+
+  if (sellerOrder.sellerId !== sellerId) {
+    throw Object.assign(
+      new Error("You are not authorized to view this order"),
+      { statusCode: 403 }
+    );
+  }
+
+  return sellerOrder;
+};
+
+// ── Seller Dashboard ──────────────────────────────────────────
+const getDashboard = async (userId: string) => {
+  const sellerId = await getSellerProfileId(userId);
+
+  const [totalMedicines, orderStats, pendingOrders] = await Promise.all([
+    // Total medicines owned by seller
+    prisma.medicine.count({ where: { sellerId } }),
+
+    // Total sales (items sold) and total revenue from DELIVERED orders
+    prisma.orderItem.aggregate({
+      where: {
+        sellerOrder: {
+          sellerId,
+          status: OrderStatus.DELIVERED,
+        },
+      },
+      _sum: {
+        quantity: true,
+        subtotal: true,
+      },
+    }),
+
+    // Pending orders (PLACED or PROCESSING)
+    prisma.sellerOrder.count({
+      where: {
+        sellerId,
+        status: { in: [OrderStatus.PLACED, OrderStatus.PROCESSING] },
+      },
+    }),
+  ]);
+
+  return {
+    totalMedicines,
+    totalSales: orderStats._sum.quantity || 0,
+    totalRevenue: Number(orderStats._sum.subtotal || 0),
+    pendingOrders,
+  };
+};
+
 export const sellerService = {
   createSellerProfile,
   addMedicine,
@@ -301,4 +391,6 @@ export const sellerService = {
   updateStock,
   getSellerOrders,
   updateOrderStatus,
+  getSellerOrderById,
+  getDashboard,
 };
