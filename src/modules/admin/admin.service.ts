@@ -1,14 +1,28 @@
-import { Prisma, OrderStatus } from "../../../generated/prisma/client";
+import { Prisma, OrderStatus, PaymentStatus } from "../../../generated/prisma/client";
 import { prisma } from "../../lib/prisma";
+import { AppError } from "../../helpers/AppError";
 import { calculatePagination } from "../../helpers/paginationSortingHelper";
+import { userRole } from "../../constant/role";
+import { AdminUserQuery, AdminOrderQuery, AdminMedicineQuery } from "./admin.interface";
 
 // ── Dashboard Metrics ─────────────────────────────────────────
 const getDashboard = async () => {
   const [totalUsers, totalOrders, revenueAgg, totalMedicines, totalSellers] =
     await Promise.all([
       prisma.user.count(),
-      prisma.order.count(),
-      prisma.order.aggregate({ _sum: { totalPrice: true } }),
+      // Exclude orders where ALL seller-orders are CANCELLED
+      prisma.order.count({
+        where: {
+          sellerOrders: {
+            some: { status: { not: OrderStatus.CANCELLED } },
+          },
+        },
+      }),
+      // Revenue only from orders with paymentStatus PAID
+      prisma.order.aggregate({
+        where: { paymentStatus: PaymentStatus.PAID },
+        _sum: { totalPrice: true },
+      }),
       prisma.medicine.count(),
       prisma.sellerProfile.count(),
     ]);
@@ -23,12 +37,7 @@ const getDashboard = async () => {
 };
 
 // ── Get Users (paginated + filtered) ──────────────────────────
-const getUsers = async (query: {
-  role?: string;
-  search?: string;
-  page?: string;
-  limit?: string;
-}) => {
+const getUsers = async (query: AdminUserQuery) => {
   const { page, limit, skip } = calculatePagination({
     page: query.page,
     limit: query.limit,
@@ -79,20 +88,22 @@ const getUsers = async (query: {
 
 // ── Ban / Unban User ──────────────────────────────────────────
 const toggleBan = async (adminId: string, userId: string, isBanned: boolean) => {
+  if (adminId === userId) {
+    throw new AppError("You cannot ban yourself", 400);
+  }
+
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { id: true, role: true },
   });
 
   if (!user) {
-    throw Object.assign(new Error("User not found"), { statusCode: 404 });
+    throw new AppError("User not found", 404);
   }
 
   // Admin cannot ban another admin
-  if (user.role === "AMDIN") {
-    throw Object.assign(new Error("Cannot ban an admin user"), {
-      statusCode: 403,
-    });
+  if (user.role === userRole.ADMIN) {
+    throw new AppError("Cannot ban an admin user", 403);
   }
 
   const updated = await prisma.user.update({
@@ -111,13 +122,7 @@ const toggleBan = async (adminId: string, userId: string, isBanned: boolean) => 
 };
 
 // ── Get Orders (paginated + filtered) ─────────────────────────
-const getOrders = async (query: {
-  status?: string;
-  date?: string;
-  seller?: string;
-  page?: string;
-  limit?: string;
-}) => {
+const getOrders = async (query: AdminOrderQuery) => {
   const { page, limit, skip } = calculatePagination({
     page: query.page,
     limit: query.limit,
@@ -182,13 +187,7 @@ const getOrders = async (query: {
 };
 
 // ── Get Medicines (paginated + filtered) ──────────────────────
-const getMedicines = async (query: {
-  search?: string;
-  seller?: string;
-  category?: string;
-  page?: string;
-  limit?: string;
-}) => {
+const getMedicines = async (query: AdminMedicineQuery) => {
   const { page, limit, skip } = calculatePagination({
     page: query.page,
     limit: query.limit,

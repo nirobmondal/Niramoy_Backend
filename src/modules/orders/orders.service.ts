@@ -1,15 +1,11 @@
 import { Prisma, OrderStatus } from "../../../generated/prisma/client";
 import { prisma } from "../../lib/prisma";
+import { AppError } from "../../helpers/AppError";
 import { calculatePagination } from "../../helpers/paginationSortingHelper";
+import { calculateOrderTotal } from "../../helpers/orderCalculationHelper";
+import { CheckoutInput, OrderQuery } from "./orders.interface";
 
 // ── Checkout (Create Order from Cart) ─────────────────────────
-interface CheckoutInput {
-  shippingAddress: string;
-  shippingCity: string;
-  phone: string;
-  notes?: string;
-}
-
 const checkout = async (userId: string, data: CheckoutInput) => {
   // 1. Read user cart with items
   const cart = await prisma.cart.findUnique({
@@ -34,31 +30,32 @@ const checkout = async (userId: string, data: CheckoutInput) => {
 
   // 2. Validate cart not empty
   if (!cart || cart.items.length === 0) {
-    throw Object.assign(new Error("Cart is empty"), { statusCode: 400 });
+    throw new AppError("Cart is empty", 400);
   }
 
   // 3. Validate medicine stock and availability
   for (const item of cart.items) {
     if (!item.medicine.isAvailable) {
-      throw Object.assign(
-        new Error(`"${item.medicine.name}" is no longer available`),
-        { statusCode: 400 }
+      throw new AppError(
+        `"${item.medicine.name}" is no longer available`,
+        400
       );
     }
     if (item.quantity > item.medicine.stock) {
-      throw Object.assign(
-        new Error(
-          `Insufficient stock for "${item.medicine.name}". Available: ${item.medicine.stock}, Requested: ${item.quantity}`
-        ),
-        { statusCode: 400 }
+      throw new AppError(
+        `Insufficient stock for "${item.medicine.name}". Available: ${item.medicine.stock}, Requested: ${item.quantity}`,
+        400
       );
     }
   }
 
   // 4. Calculate total price
-  const totalPrice = cart.items.reduce((sum, item) => {
-    return sum + Number(item.medicine.price) * item.quantity;
-  }, 0);
+  const totalPrice = calculateOrderTotal(
+    cart.items.map((item) => ({
+      price: Number(item.medicine.price),
+      quantity: item.quantity,
+    }))
+  );
 
   // 5. Group items by seller
   const itemsBySeller = new Map<
@@ -148,10 +145,7 @@ const checkout = async (userId: string, data: CheckoutInput) => {
 };
 
 // ── Get User Orders (paginated + status filter) ───────────────
-const getUserOrders = async (
-  userId: string,
-  query: { page?: string; limit?: string; status?: string }
-) => {
+const getUserOrders = async (userId: string, query: OrderQuery) => {
   const { page, limit, skip } = calculatePagination({
     page: query.page,
     limit: query.limit,
@@ -230,14 +224,12 @@ const getOrderById = async (userId: string, orderId: string) => {
   });
 
   if (!order) {
-    throw Object.assign(new Error("Order not found"), { statusCode: 404 });
+    throw new AppError("Order not found", 404);
   }
 
   // Customer can only access their own orders
   if (order.customerId !== userId) {
-    throw Object.assign(new Error("You are not authorized to view this order"), {
-      statusCode: 403,
-    });
+    throw new AppError("You are not authorized to view this order", 403);
   }
 
   return order;
@@ -249,20 +241,23 @@ const cancelOrder = async (userId: string, orderId: string) => {
     where: { id: orderId },
     include: {
       sellerOrders: {
-        select: { id: true, status: true },
+        select: {
+          id: true,
+          status: true,
+          items: {
+            select: { medicineId: true, quantity: true },
+          },
+        },
       },
     },
   });
 
   if (!order) {
-    throw Object.assign(new Error("Order not found"), { statusCode: 404 });
+    throw new AppError("Order not found", 404);
   }
 
   if (order.customerId !== userId) {
-    throw Object.assign(
-      new Error("You are not authorized to cancel this order"),
-      { statusCode: 403 }
-    );
+    throw new AppError("You are not authorized to cancel this order", 403);
   }
 
   // Only cancel if ALL seller orders are still PLACED
@@ -271,21 +266,29 @@ const cancelOrder = async (userId: string, orderId: string) => {
   );
 
   if (!allPlaced) {
-    throw Object.assign(
-      new Error("Order can only be cancelled when status is PLACED"),
-      { statusCode: 400 }
+    throw new AppError(
+      "Order can only be cancelled when all sub-orders are in PLACED status",
+      400
     );
   }
 
-  // Cancel all seller orders in a transaction
-  await prisma.$transaction(
-    order.sellerOrders.map((so) =>
-      prisma.sellerOrder.update({
+  // Cancel all seller orders and restore stock in a transaction
+  await prisma.$transaction(async (tx) => {
+    for (const so of order.sellerOrders) {
+      await tx.sellerOrder.update({
         where: { id: so.id },
         data: { status: OrderStatus.CANCELLED },
-      })
-    )
-  );
+      });
+
+      // Restore stock for each item
+      for (const item of so.items) {
+        await tx.medicine.update({
+          where: { id: item.medicineId },
+          data: { stock: { increment: item.quantity } },
+        });
+      }
+    }
+  });
 
   return prisma.order.findUnique({
     where: { id: orderId },

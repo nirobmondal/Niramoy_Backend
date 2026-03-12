@@ -2,8 +2,10 @@ import { toNodeHandler } from "better-auth/node";
 import express, { Request, Response } from "express";
 import cors from "cors";
 
+import { config } from "./config";
 import { auth } from "./lib/auth";
 import { notFound } from "./middlewares/notFound";
+import { globalErrorHandler } from "./middlewares/globalErrorHandler";
 import sellerRouter from "./modules/sellers/sellers.routes";
 import categoryRouter from "./modules/categories/categories.routes";
 import medicineRouter from "./modules/medicines/medicines.routes";
@@ -17,7 +19,7 @@ const app = express();
 // global middlewares
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:5000", 
+    origin: config.frontendUrl, 
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"], 
     credentials: true, // Allow credentials (cookies, authorization headers, etc.)
   })
@@ -60,6 +62,6 @@ app.use("/api/users", userRouter);
 app.use(notFound)
 
 // global error handler
-
+app.use(globalErrorHandler);
 
 export default app;

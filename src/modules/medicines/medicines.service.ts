@@ -1,19 +1,9 @@
 import { prisma } from "../../lib/prisma";
+import { AppError } from "../../helpers/AppError";
 import { calculatePagination } from "../../helpers/paginationSortingHelper";
+import { calculateAverageRating } from "../../helpers/ratingHelper";
 import { Prisma } from "../../../generated/prisma/client";
-
-// ── Query interface ───────────────────────────────────────────
-interface MedicineQuery {
-  search?: string;
-  category?: string;
-  manufacturer?: string;
-  minPrice?: string;
-  maxPrice?: string;
-  sortBy?: string;
-  sortOrder?: string;
-  page?: string;
-  limit?: string;
-}
+import { MedicineQuery } from "./medicines.interface";
 
 // ── Get All Medicines (paginated + filtered + sorted) ─────────
 const getAllMedicines = async (query: MedicineQuery) => {
@@ -106,19 +96,16 @@ const getMedicineById = async (medicineId: string) => {
   });
 
   if (!medicine) {
-    throw Object.assign(new Error("Medicine not found"), { statusCode: 404 });
+    throw new AppError("Medicine not found", 404);
   }
 
-  // Calculate average rating
-  const avgRating =
-    medicine.reviews.length > 0
-      ? medicine.reviews.reduce((sum, r) => sum + r.rating, 0) /
-        medicine.reviews.length
-      : 0;
+  const averageRating = calculateAverageRating(
+    medicine.reviews.map((r) => r.rating)
+  );
 
   return {
     ...medicine,
-    averageRating: Math.round(avgRating * 10) / 10,
+    averageRating,
   };
 };
 

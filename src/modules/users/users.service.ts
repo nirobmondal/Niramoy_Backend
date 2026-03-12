@@ -1,4 +1,6 @@
 import { prisma } from "../../lib/prisma";
+import { AppError } from "../../helpers/AppError";
+import { UpdateProfileInput } from "./users.interface";
 
 // ── Get My Profile ────────────────────────────────────────────
 const getMyProfile = async (userId: string) => {
@@ -17,20 +19,13 @@ const getMyProfile = async (userId: string) => {
   });
 
   if (!user) {
-    throw Object.assign(new Error("User not found"), { statusCode: 404 });
+    throw new AppError("User not found", 404);
   }
 
   return user;
 };
 
 // ── Update My Profile ─────────────────────────────────────────
-interface UpdateProfileInput {
-  name?: string;
-  phone?: string;
-  address?: string;
-  image?: string;
-}
-
 const updateMyProfile = async (userId: string, data: UpdateProfileInput) => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -38,7 +33,7 @@ const updateMyProfile = async (userId: string, data: UpdateProfileInput) => {
   });
 
   if (!user) {
-    throw Object.assign(new Error("User not found"), { statusCode: 404 });
+    throw new AppError("User not found", 404);
   }
 
   // Only pick allowed fields

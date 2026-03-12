@@ -1,51 +1,28 @@
 import { Request, Response } from "express";
 import { medicineService } from "./medicines.service";
+import { MedicineQuery } from "./medicines.interface";
 
 const getAllMedicines = async (req: Request, res: Response) => {
-  try {
-    const result = await medicineService.getAllMedicines(
-      req.query as {
-        search?: string;
-        category?: string;
-        manufacturer?: string;
-        minPrice?: string;
-        maxPrice?: string;
-        sortBy?: string;
-        sortOrder?: string;
-        page?: string;
-        limit?: string;
-      }
-    );
+  const result = await medicineService.getAllMedicines(
+    req.query as MedicineQuery
+  );
 
-    res.status(200).json({
-      success: true,
-      message: "Medicines fetched successfully",
-      data: result.data,
-      meta: result.meta,
-    });
-  } catch (error: any) {
-    res.status(error.statusCode || 500).json({
-      success: false,
-      message: error.message || "Failed to fetch medicines",
-    });
-  }
+  res.status(200).json({
+    success: true,
+    message: "Medicines fetched successfully",
+    data: result.data,
+    meta: result.meta,
+  });
 };
 
 const getMedicineById = async (req: Request, res: Response) => {
-  try {
-    const medicine = await medicineService.getMedicineById(req.params.id as string);
+  const medicine = await medicineService.getMedicineById(req.params.id as string);
 
-    res.status(200).json({
-      success: true,
-      message: "Medicine fetched successfully",
-      data: medicine,
-    });
-  } catch (error: any) {
-    res.status(error.statusCode || 500).json({
-      success: false,
-      message: error.message || "Failed to fetch medicine",
-    });
-  }
+  res.status(200).json({
+    success: true,
+    message: "Medicine fetched successfully",
+    data: medicine,
+  });
 };
 
 export const medicineController = {

@@ -1,3 +1,4 @@
+import { config } from "../config";
 import { userRole } from "../constant/role";
 import { prisma } from "../lib/prisma";
 
@@ -23,11 +24,11 @@ async function seedAdmin() {
     }
 
     // otherwise create the admin
-    const response = await fetch(`${process.env.BETTER_AUTH_URL}/api/auth/sign-up/email`, {
+    const response = await fetch(`${config.betterAuthUrl}/api/auth/sign-up/email`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "Origin": process.env.FRONTEND_URL as string
+        "Origin": config.frontendUrl
       },
       body: JSON.stringify(adminData)
     })

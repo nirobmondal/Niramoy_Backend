@@ -15,7 +15,12 @@ sellerRouter.post(
 // All routes below require authenticated SELLER
 sellerRouter.use(auth(userRole.SELLER));
 
+// Seller profile
+sellerRouter.get("/profile", sellerController.getSellerProfile);
+sellerRouter.patch("/profile", sellerController.updateSellerProfile);
+
 // Medicine management
+sellerRouter.get("/medicines", sellerController.getSellerMedicines);
 sellerRouter.post("/medicines", sellerController.addMedicine);
 sellerRouter.patch("/medicines/:id", sellerController.editMedicine);
 sellerRouter.delete("/medicines/:id", sellerController.removeMedicine);

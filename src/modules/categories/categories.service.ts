@@ -1,12 +1,10 @@
 import { prisma } from "../../lib/prisma";
+import { AppError } from "../../helpers/AppError";
 import { calculatePagination } from "../../helpers/paginationSortingHelper";
+import { CategoryQuery, CreateCategoryInput, UpdateCategoryInput } from "./categories.interface";
 
 // ── Get All Categories (paginated + search) ───────────────────
-const getAllCategories = async (query: {
-  page?: string;
-  limit?: string;
-  search?: string;
-}) => {
+const getAllCategories = async (query: CategoryQuery) => {
   const { page, limit, skip } = calculatePagination({
     page: query.page,
     limit: query.limit,
@@ -41,31 +39,35 @@ const getAllCategories = async (query: {
 const getCategoryWithMedicines = async (categoryId: string) => {
   const category = await prisma.category.findUnique({
     where: { id: categoryId },
-    include: { medicines: true },
+    include: {
+      medicines: {
+        where: { isAvailable: true },
+        include: {
+          seller: { select: { id: true, storeName: true } },
+        },
+      },
+    },
   });
 
   if (!category) {
-    throw Object.assign(new Error("Category not found"), {
-      statusCode: 404,
-    });
+    throw new AppError("Category not found", 404);
   }
 
   return category;
 };
 
 // ── Create Category ───────────────────────────────────────────
-const createCategory = async (data: {
-  name: string;
-  description?: string;
-}) => {
+const createCategory = async (data: CreateCategoryInput) => {
+  if (!data.name) {
+    throw new AppError("Category name is required", 400);
+  }
+
   const existing = await prisma.category.findUnique({
     where: { name: data.name },
   });
 
   if (existing) {
-    throw Object.assign(new Error("Category with this name already exists"), {
-      statusCode: 409,
-    });
+    throw new AppError("Category with this name already exists", 409);
   }
 
   const category = await prisma.category.create({ data });
@@ -75,16 +77,14 @@ const createCategory = async (data: {
 // ── Update Category ───────────────────────────────────────────
 const updateCategory = async (
   categoryId: string,
-  data: { name?: string; description?: string }
+  data: UpdateCategoryInput
 ) => {
   const category = await prisma.category.findUnique({
     where: { id: categoryId },
   });
 
   if (!category) {
-    throw Object.assign(new Error("Category not found"), {
-      statusCode: 404,
-    });
+    throw new AppError("Category not found", 404);
   }
 
   if (data.name && data.name !== category.name) {
@@ -92,10 +92,7 @@ const updateCategory = async (
       where: { name: data.name },
     });
     if (duplicate) {
-      throw Object.assign(
-        new Error("Category with this name already exists"),
-        { statusCode: 409 }
-      );
+      throw new AppError("Category with this name already exists", 409);
     }
   }
 
@@ -115,16 +112,11 @@ const deleteCategory = async (categoryId: string) => {
   });
 
   if (!category) {
-    throw Object.assign(new Error("Category not found"), {
-      statusCode: 404,
-    });
+    throw new AppError("Category not found", 404);
   }
 
   if (category._count.medicines > 0) {
-    throw Object.assign(
-      new Error("Cannot delete category that has medicines assigned to it"),
-      { statusCode: 400 }
-    );
+    throw new AppError("Cannot delete category that has medicines assigned to it", 400);
   }
 
   await prisma.category.delete({ where: { id: categoryId } });

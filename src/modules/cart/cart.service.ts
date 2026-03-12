@@ -1,5 +1,7 @@
 import { prisma } from "../../lib/prisma";
-import { Prisma } from "../../../generated/prisma/client";
+import { AppError } from "../../helpers/AppError";
+import { calculateCartTotal } from "../../helpers/cartCalculationHelper";
+import { CartItemInput } from "./cart.interface";
 
 // ── Helper: get or create cart for user ───────────────────────
 const getOrCreateCart = async (userId: string) => {
@@ -39,31 +41,29 @@ const getCart = async (userId: string) => {
     return { items: [], totalPrice: 0 };
   }
 
-  const totalPrice = cart.items.reduce((sum, item) => {
-    return sum + Number(item.medicine.price) * item.quantity;
-  }, 0);
+  const totalPrice = calculateCartTotal(
+    cart.items.map((item) => ({
+      price: Number(item.medicine.price),
+      quantity: item.quantity,
+    }))
+  );
 
   return {
     id: cart.id,
     items: cart.items,
-    totalPrice: Math.round(totalPrice * 100) / 100,
+    totalPrice,
   };
 };
 
 // ── Add Item to Cart ──────────────────────────────────────────
-const addItem = async (
-  userId: string,
-  data: { medicineId: string; quantity: number }
-) => {
+const addItem = async (userId: string, data: CartItemInput) => {
   const medicine = await prisma.medicine.findUnique({
     where: { id: data.medicineId },
     select: { id: true, stock: true, isAvailable: true },
   });
 
   if (!medicine || !medicine.isAvailable) {
-    throw Object.assign(new Error("Medicine not found or unavailable"), {
-      statusCode: 404,
-    });
+    throw new AppError("Medicine not found or unavailable", 404);
   }
 
   const cart = await getOrCreateCart(userId);
@@ -78,11 +78,9 @@ const addItem = async (
     : data.quantity;
 
   if (newQuantity > medicine.stock) {
-    throw Object.assign(
-      new Error(
-        `Requested quantity (${newQuantity}) exceeds available stock (${medicine.stock})`
-      ),
-      { statusCode: 400 }
+    throw new AppError(
+      `Requested quantity (${newQuantity}) exceeds available stock (${medicine.stock})`,
+      400
     );
   }
 
@@ -116,7 +114,7 @@ const updateItem = async (
   const cart = await prisma.cart.findUnique({ where: { userId } });
 
   if (!cart) {
-    throw Object.assign(new Error("Cart not found"), { statusCode: 404 });
+    throw new AppError("Cart not found", 404);
   }
 
   const cartItem = await prisma.cartItem.findUnique({
@@ -125,15 +123,13 @@ const updateItem = async (
   });
 
   if (!cartItem || cartItem.cartId !== cart.id) {
-    throw Object.assign(new Error("Cart item not found"), { statusCode: 404 });
+    throw new AppError("Cart item not found", 404);
   }
 
   if (quantity > cartItem.medicine.stock) {
-    throw Object.assign(
-      new Error(
-        `Requested quantity (${quantity}) exceeds available stock (${cartItem.medicine.stock})`
-      ),
-      { statusCode: 400 }
+    throw new AppError(
+      `Requested quantity (${quantity}) exceeds available stock (${cartItem.medicine.stock})`,
+      400
     );
   }
 
@@ -151,7 +147,7 @@ const removeItem = async (userId: string, cartItemId: string) => {
   const cart = await prisma.cart.findUnique({ where: { userId } });
 
   if (!cart) {
-    throw Object.assign(new Error("Cart not found"), { statusCode: 404 });
+    throw new AppError("Cart not found", 404);
   }
 
   const cartItem = await prisma.cartItem.findUnique({
@@ -159,7 +155,7 @@ const removeItem = async (userId: string, cartItemId: string) => {
   });
 
   if (!cartItem || cartItem.cartId !== cart.id) {
-    throw Object.assign(new Error("Cart item not found"), { statusCode: 404 });
+    throw new AppError("Cart item not found", 404);
   }
 
   await prisma.cartItem.delete({ where: { id: cartItemId } });
@@ -170,7 +166,7 @@ const clearCart = async (userId: string) => {
   const cart = await prisma.cart.findUnique({ where: { userId } });
 
   if (!cart) {
-    throw Object.assign(new Error("Cart not found"), { statusCode: 404 });
+    throw new AppError("Cart not found", 404);
   }
 
   await prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
