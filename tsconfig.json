@@ -43,6 +43,6 @@
     "moduleDetection": "force",
     "skipLibCheck": true,
   }, 
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "generated"],
   "exclude": ["node_modules", "dist"]
 }
