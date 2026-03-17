@@ -1,7 +1,7 @@
 export interface MedicineQuery {
   search?: string;
-  category?: string;
-  manufacturer?: string;
+  categoryId?: string;
+  manufacturerId?: string;
   minPrice?: string;
   maxPrice?: string;
   sortBy?: string;

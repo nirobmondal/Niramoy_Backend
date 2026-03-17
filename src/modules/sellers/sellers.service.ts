@@ -1,4 +1,8 @@
-import { OrderStatus, PaymentStatus, Prisma } from "../../../generated/prisma/client";
+import {
+  OrderStatus,
+  PaymentStatus,
+  Prisma,
+} from "../../../generated/prisma/client";
 import { userRole } from "../../constant/role";
 import { prisma } from "../../lib/prisma";
 import { AppError } from "../../helpers/AppError";
@@ -22,18 +26,18 @@ const STATUS_FLOW: Record<OrderStatus, OrderStatus | null> = {
 };
 
 // Statuses that can be cancelled
-const CANCELLABLE: OrderStatus[] = [
-  OrderStatus.PLACED,
-  OrderStatus.PROCESSING,
-];
+const CANCELLABLE: OrderStatus[] = [OrderStatus.PLACED, OrderStatus.PROCESSING];
 
 // ── Create Seller Profile ─────────────────────────────────────
 const createSellerProfile = async (
   userId: string,
-  data: CreateSellerProfileInput
+  data: CreateSellerProfileInput,
 ) => {
   if (!data.storeName || !data.address || !data.contactNumber) {
-    throw new AppError("storeName, address, and contactNumber are required", 400);
+    throw new AppError(
+      "storeName, address, and contactNumber are required",
+      400,
+    );
   }
 
   const existing = await prisma.sellerProfile.findUnique({
@@ -75,8 +79,17 @@ async function getSellerProfileId(userId: string): Promise<string> {
 
 // ── Add Medicine ──────────────────────────────────────────────
 const addMedicine = async (userId: string, data: CreateMedicineInput) => {
-  if (!data.name || !data.price || !data.dosageForm || !data.categoryId) {
-    throw new AppError("name, price, dosageForm, and categoryId are required", 400);
+  if (
+    !data.name ||
+    !data.price ||
+    !data.dosageForm ||
+    !data.categoryId ||
+    !data.manufacturerId
+  ) {
+    throw new AppError(
+      "name, price, dosageForm, categoryId, and manufacturerId are required",
+      400,
+    );
   }
 
   const sellerId = await getSellerProfileId(userId);
@@ -89,6 +102,15 @@ const addMedicine = async (userId: string, data: CreateMedicineInput) => {
 
   if (!category) {
     throw new AppError("Category not found", 404);
+  }
+
+  const manufacturer = await prisma.manufacturer.findUnique({
+    where: { id: data.manufacturerId },
+    select: { id: true },
+  });
+
+  if (!manufacturer) {
+    throw new AppError("Manufacturer not found", 404);
   }
 
   const medicine = await prisma.medicine.create({
@@ -105,7 +127,7 @@ const addMedicine = async (userId: string, data: CreateMedicineInput) => {
 const editMedicine = async (
   userId: string,
   medicineId: string,
-  data: UpdateMedicineInput
+  data: UpdateMedicineInput,
 ) => {
   const sellerId = await getSellerProfileId(userId);
 
@@ -129,6 +151,17 @@ const editMedicine = async (
     });
     if (!category) {
       throw new AppError("Category not found", 404);
+    }
+  }
+
+  if (data.manufacturerId) {
+    const manufacturer = await prisma.manufacturer.findUnique({
+      where: { id: data.manufacturerId },
+      select: { id: true },
+    });
+
+    if (!manufacturer) {
+      throw new AppError("Manufacturer not found", 404);
     }
   }
 
@@ -169,7 +202,7 @@ const removeMedicine = async (userId: string, medicineId: string) => {
 const updateStock = async (
   userId: string,
   medicineId: string,
-  stock: number
+  stock: number,
 ) => {
   const sellerId = await getSellerProfileId(userId);
 
@@ -183,7 +216,10 @@ const updateStock = async (
   }
 
   if (medicine.sellerId !== sellerId) {
-    throw new AppError("You are not authorized to update stock for this medicine", 403);
+    throw new AppError(
+      "You are not authorized to update stock for this medicine",
+      403,
+    );
   }
 
   const updated = await prisma.medicine.update({
@@ -195,7 +231,10 @@ const updateStock = async (
 };
 
 // ── Get Seller Orders (paginated + status filter) ─────────────
-const getSellerOrders = async (userId: string, query: SellerOrderQuery = {}) => {
+const getSellerOrders = async (
+  userId: string,
+  query: SellerOrderQuery = {},
+) => {
   const sellerId = await getSellerProfileId(userId);
 
   const { page, limit, skip } = calculatePagination({
@@ -256,7 +295,7 @@ const getSellerOrders = async (userId: string, query: SellerOrderQuery = {}) => 
 const updateOrderStatus = async (
   userId: string,
   sellerOrderId: string,
-  newStatus: OrderStatus
+  newStatus: OrderStatus,
 ) => {
   const sellerId = await getSellerProfileId(userId);
 
@@ -285,7 +324,7 @@ const updateOrderStatus = async (
     if (!CANCELLABLE.includes(currentStatus)) {
       throw new AppError(
         `Cannot cancel order with status "${currentStatus}". Only PLACED or PROCESSING orders can be cancelled.`,
-        400
+        400,
       );
     }
 
@@ -315,7 +354,7 @@ const updateOrderStatus = async (
   if (!expectedNext || expectedNext !== newStatus) {
     throw new AppError(
       `Invalid status transition from "${currentStatus}" to "${newStatus}"`,
-      400
+      400,
     );
   }
 
@@ -334,7 +373,7 @@ const updateOrderStatus = async (
       });
 
       const allDelivered = siblingOrders.every(
-        (so) => so.status === OrderStatus.DELIVERED
+        (so) => so.status === OrderStatus.DELIVERED,
       );
 
       if (allDelivered) {
@@ -454,7 +493,7 @@ const getSellerProfile = async (userId: string) => {
 // ── Update Seller Profile ─────────────────────────────────────
 const updateSellerProfile = async (
   userId: string,
-  data: UpdateSellerProfileInput
+  data: UpdateSellerProfileInput,
 ) => {
   const profile = await prisma.sellerProfile.findUnique({
     where: { userId },
@@ -474,7 +513,10 @@ const updateSellerProfile = async (
 };
 
 // ── Get Seller's Own Medicines (paginated + search) ───────────
-const getSellerMedicines = async (userId: string, query: SellerMedicineQuery = {}) => {
+const getSellerMedicines = async (
+  userId: string,
+  query: SellerMedicineQuery = {},
+) => {
   const sellerId = await getSellerProfileId(userId);
 
   const { page, limit, skip } = calculatePagination({
@@ -496,6 +538,7 @@ const getSellerMedicines = async (userId: string, query: SellerMedicineQuery = {
       orderBy: { createdAt: "desc" },
       include: {
         category: { select: { id: true, name: true } },
+        manufacturer: { select: { id: true, name: true } },
       },
     }),
     prisma.medicine.count({ where }),

@@ -1,0 +1,8 @@
+model Manufacturer {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  medicines Medicine[]
+  createdAt DateTime  @default(now())
+
+  @@index([name])
+}

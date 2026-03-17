@@ -23,7 +23,7 @@ export interface CreateMedicineInput {
   description?: string;
   price: number;
   stock?: number;
-  manufacturer?: string;
+  manufacturerId: string;
   imageUrl?: string;
   dosageForm: string;
   strength?: string;
@@ -34,7 +34,7 @@ export interface UpdateMedicineInput {
   name?: string;
   description?: string;
   price?: number;
-  manufacturer?: string;
+  manufacturerId?: string;
   imageUrl?: string;
   dosageForm?: string;
   strength?: string;

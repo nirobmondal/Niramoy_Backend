@@ -7,7 +7,8 @@ model Medicine {
   price Decimal @db.Decimal(10,2)
   stock Int @default(0)
 
-  manufacturer String?
+  manufacturerId String
+  manufacturer   Manufacturer @relation(fields: [manufacturerId], references: [id])
   imageUrl String?
 
   dosageForm String
@@ -29,5 +30,6 @@ model Medicine {
 
   @@index([name])
   @@index([categoryId])
+  @@index([manufacturerId])
   @@index([sellerId])
 }

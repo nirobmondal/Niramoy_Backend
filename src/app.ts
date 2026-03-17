@@ -14,15 +14,16 @@ import orderRouter from "./modules/orders/orders.routes";
 import reviewRouter from "./modules/reviews/reviews.routes";
 import adminRouter from "./modules/admin/admin.routes";
 import userRouter from "./modules/users/users.routes";
+import manufacturerRouter from "./modules/manufacturers/manufacturers.routes";
 const app = express();
 
 // global middlewares
 app.use(
   cors({
-    origin: config.frontendUrl, 
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"], 
+    origin: config.frontendUrl,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     credentials: true, // Allow credentials (cookies, authorization headers, etc.)
-  })
+  }),
 );
 app.use(express.json());
 
@@ -32,13 +33,16 @@ app.all("/api/auth/*splat", toNodeHandler(auth));
 // testing route
 app.get("/", (req: Request, res: Response) => {
   res.send("Niramoy backend is running.");
-})
+});
 
 // seller routes
 app.use("/api/seller", sellerRouter);
 
 // category routes
-app.use("/api/categories", categoryRouter)
+app.use("/api/categories", categoryRouter);
+
+// manufacturer routes
+app.use("/api/manufacturers", manufacturerRouter);
 
 // medicine routes
 app.use("/api/medicines", medicineRouter);
@@ -59,7 +63,7 @@ app.use("/api/admin", adminRouter);
 app.use("/api/users", userRouter);
 
 // not found api
-app.use(notFound)
+app.use(notFound);
 
 // global error handler
 app.use(globalErrorHandler);

@@ -12,19 +12,18 @@ const getAllMedicines = async (query: MedicineQuery) => {
     limit: query.limit,
   });
 
-  const where: Prisma.MedicineWhereInput = { isAvailable: true };
-
-  if (query.search) {
-    where.name = { contains: query.search, mode: "insensitive" };
-  }
-
-  if (query.category) {
-    where.categoryId = query.category;
-  }
-
-  if (query.manufacturer) {
-    where.manufacturer = { contains: query.manufacturer, mode: "insensitive" };
-  }
+  const where: Prisma.MedicineWhereInput = {
+    isAvailable: true,
+    ...(query.search && {
+      name: { contains: query.search, mode: "insensitive" },
+    }),
+    ...(query.categoryId && {
+      categoryId: query.categoryId,
+    }),
+    ...(query.manufacturerId && {
+      manufacturerId: query.manufacturerId,
+    }),
+  };
 
   if (query.minPrice || query.maxPrice) {
     where.price = {};
@@ -54,6 +53,7 @@ const getAllMedicines = async (query: MedicineQuery) => {
       orderBy,
       include: {
         category: { select: { id: true, name: true } },
+        manufacturer: { select: { id: true, name: true } },
         seller: { select: { id: true, storeName: true } },
       },
     }),
@@ -77,6 +77,12 @@ const getMedicineById = async (medicineId: string) => {
     where: { id: medicineId },
     include: {
       category: true,
+      manufacturer: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
       seller: {
         select: {
           id: true,
@@ -100,7 +106,7 @@ const getMedicineById = async (medicineId: string) => {
   }
 
   const averageRating = calculateAverageRating(
-    medicine.reviews.map((r) => r.rating)
+    medicine.reviews.map((r) => r.rating),
   );
 
   return {
