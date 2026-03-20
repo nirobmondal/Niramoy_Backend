@@ -9,6 +9,7 @@ export interface AdminOrderQuery {
   status?: string;
   date?: string;
   seller?: string;
+  customer?: string;
   page?: string;
   limit?: string;
 }

@@ -15,30 +15,35 @@ import {
 
 // ── Dashboard Metrics ─────────────────────────────────────────
 const getDashboard = async () => {
-  const [totalUsers, totalOrders, revenueAgg, totalMedicines, totalSellers] =
-    await Promise.all([
-      prisma.user.count(),
-      // Exclude orders where ALL seller-orders are CANCELLED
-      prisma.order.count({
-        where: {
-          sellerOrders: {
-            some: { status: { not: OrderStatus.CANCELLED } },
-          },
+  const [
+    totalUsers,
+    totalOrders,
+    deliveredRevenueAgg,
+    totalMedicines,
+    totalSellers,
+  ] = await Promise.all([
+    prisma.user.count(),
+    // Exclude orders where ALL seller-orders are CANCELLED
+    prisma.order.count({
+      where: {
+        sellerOrders: {
+          some: { status: { not: OrderStatus.CANCELLED } },
         },
-      }),
-      // Revenue only from orders with paymentStatus PAID
-      prisma.order.aggregate({
-        where: { paymentStatus: PaymentStatus.PAID },
-        _sum: { totalPrice: true },
-      }),
-      prisma.medicine.count(),
-      prisma.sellerProfile.count(),
-    ]);
+      },
+    }),
+    // Revenue must reflect only delivered seller-order amounts.
+    prisma.sellerOrder.aggregate({
+      where: { status: OrderStatus.DELIVERED },
+      _sum: { subtotal: true },
+    }),
+    prisma.medicine.count(),
+    prisma.sellerProfile.count(),
+  ]);
 
   return {
     totalUsers,
     totalOrders,
-    totalRevenue: Number(revenueAgg._sum.totalPrice || 0),
+    totalRevenue: Number(deliveredRevenueAgg._sum.subtotal || 0),
     totalMedicines,
     totalSellers,
   };
@@ -182,6 +187,16 @@ const getOrders = async (query: AdminOrderQuery) => {
           ?.some as Prisma.SellerOrderWhereInput) || {}),
         sellerId: sellerProfile.id,
       },
+    };
+  }
+
+  if (query.customer) {
+    where.customer = {
+      OR: [
+        { id: query.customer },
+        { name: { contains: query.customer, mode: "insensitive" } },
+        { email: { contains: query.customer, mode: "insensitive" } },
+      ],
     };
   }
 

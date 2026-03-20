@@ -19,7 +19,7 @@ const getUsers = async (req: Request, res: Response) => {
       search?: string;
       page?: string;
       limit?: string;
-    }
+    },
   );
 
   res.status(200).json({
@@ -40,7 +40,7 @@ const toggleBan = async (req: Request, res: Response) => {
   const user = await adminService.toggleBan(
     req.user!.id,
     req.params.id as string,
-    isBanned
+    isBanned,
   );
 
   res.status(200).json({
@@ -58,9 +58,10 @@ const getOrders = async (req: Request, res: Response) => {
       status?: string;
       date?: string;
       seller?: string;
+      customer?: string;
       page?: string;
       limit?: string;
-    }
+    },
   );
 
   res.status(200).json({
@@ -79,7 +80,7 @@ const getMedicines = async (req: Request, res: Response) => {
       category?: string;
       page?: string;
       limit?: string;
-    }
+    },
   );
 
   res.status(200).json({
