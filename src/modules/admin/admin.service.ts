@@ -1,9 +1,17 @@
-import { Prisma, OrderStatus, PaymentStatus } from "../../../generated/prisma/client";
+import {
+  Prisma,
+  OrderStatus,
+  PaymentStatus,
+} from "../../../generated/prisma/client";
 import { prisma } from "../../lib/prisma";
 import { AppError } from "../../helpers/AppError";
 import { calculatePagination } from "../../helpers/paginationSortingHelper";
 import { userRole } from "../../constant/role";
-import { AdminUserQuery, AdminOrderQuery, AdminMedicineQuery } from "./admin.interface";
+import {
+  AdminUserQuery,
+  AdminOrderQuery,
+  AdminMedicineQuery,
+} from "./admin.interface";
 
 // ── Dashboard Metrics ─────────────────────────────────────────
 const getDashboard = async () => {
@@ -87,7 +95,11 @@ const getUsers = async (query: AdminUserQuery) => {
 };
 
 // ── Ban / Unban User ──────────────────────────────────────────
-const toggleBan = async (adminId: string, userId: string, isBanned: boolean) => {
+const toggleBan = async (
+  adminId: string,
+  userId: string,
+  isBanned: boolean,
+) => {
   if (adminId === userId) {
     throw new AppError("You cannot ban yourself", 400);
   }
@@ -144,12 +156,31 @@ const getOrders = async (query: AdminOrderQuery) => {
   }
 
   if (query.seller) {
+    const sellerProfile = await prisma.sellerProfile.findFirst({
+      where: {
+        OR: [{ id: query.seller }, { userId: query.seller }],
+      },
+      select: { id: true },
+    });
+
+    if (!sellerProfile) {
+      return {
+        data: [],
+        meta: {
+          page,
+          limit,
+          total: 0,
+          totalPages: 0,
+        },
+      };
+    }
+
     where.sellerOrders = {
       ...((where.sellerOrders as Prisma.SellerOrderListRelationFilter) || {}),
       some: {
-        ...((where.sellerOrders as Prisma.SellerOrderListRelationFilter)
-          ?.some as Prisma.SellerOrderWhereInput || {}),
-        sellerId: query.seller,
+        ...(((where.sellerOrders as Prisma.SellerOrderListRelationFilter)
+          ?.some as Prisma.SellerOrderWhereInput) || {}),
+        sellerId: sellerProfile.id,
       },
     };
   }
@@ -200,7 +231,26 @@ const getMedicines = async (query: AdminMedicineQuery) => {
   }
 
   if (query.seller) {
-    where.sellerId = query.seller;
+    const sellerProfile = await prisma.sellerProfile.findFirst({
+      where: {
+        OR: [{ id: query.seller }, { userId: query.seller }],
+      },
+      select: { id: true },
+    });
+
+    if (!sellerProfile) {
+      return {
+        data: [],
+        meta: {
+          page,
+          limit,
+          total: 0,
+          totalPages: 0,
+        },
+      };
+    }
+
+    where.sellerId = sellerProfile.id;
   }
 
   if (query.category) {

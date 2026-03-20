@@ -1,9 +1,82 @@
 import { OrderStatus } from "../../../generated/prisma/client";
 import { prisma } from "../../lib/prisma";
 import { AppError } from "../../helpers/AppError";
+import { calculatePagination } from "../../helpers/paginationSortingHelper";
 import { calculateAverageRating } from "../../helpers/ratingHelper";
 import { userRole } from "../../constant/role";
-import { CreateReviewInput, UpdateReviewInput } from "./reviews.interface";
+import {
+  CreateReviewInput,
+  ReviewQuery,
+  UpdateReviewInput,
+} from "./reviews.interface";
+
+// ── Get All Reviews (admin) ──────────────────────────────────
+const getAllReviews = async (query: ReviewQuery) => {
+  const { page, limit, skip } = calculatePagination({
+    page: query.page,
+    limit: query.limit,
+  });
+
+  const parsedRating = Number(query.rating);
+
+  const where = {
+    ...(query.search && {
+      OR: [
+        {
+          comment: {
+            contains: query.search,
+            mode: "insensitive" as const,
+          },
+        },
+        {
+          medicine: {
+            name: {
+              contains: query.search,
+              mode: "insensitive" as const,
+            },
+          },
+        },
+        {
+          user: {
+            name: {
+              contains: query.search,
+              mode: "insensitive" as const,
+            },
+          },
+        },
+      ],
+    }),
+    ...(Number.isInteger(parsedRating) &&
+      parsedRating >= 1 &&
+      parsedRating <= 5 && {
+        rating: parsedRating,
+      }),
+  };
+
+  const [reviews, total] = await Promise.all([
+    prisma.review.findMany({
+      where,
+      skip,
+      take: limit,
+      include: {
+        user: { select: { id: true, name: true, email: true, image: true } },
+        medicine: { select: { id: true, name: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.review.count({ where }),
+  ]);
+
+  return {
+    data: reviews,
+    meta: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+};
 
 // ── Get Reviews for a Medicine ────────────────────────────────
 const getMedicineReviews = async (medicineId: string) => {
@@ -34,7 +107,7 @@ const getMedicineReviews = async (medicineId: string) => {
 const createReview = async (
   userId: string,
   medicineId: string,
-  data: CreateReviewInput
+  data: CreateReviewInput,
 ) => {
   const medicine = await prisma.medicine.findUnique({
     where: { id: medicineId },
@@ -69,7 +142,7 @@ const createReview = async (
   if (!hasPurchased) {
     throw new AppError(
       "You can only review medicines from delivered orders",
-      403
+      403,
     );
   }
 
@@ -92,7 +165,8 @@ const createReview = async (
 const updateReview = async (
   userId: string,
   reviewId: string,
-  data: UpdateReviewInput
+  role: string,
+  data: UpdateReviewInput,
 ) => {
   const review = await prisma.review.findUnique({
     where: { id: reviewId },
@@ -102,7 +176,7 @@ const updateReview = async (
     throw new AppError("Review not found", 404);
   }
 
-  if (review.userId !== userId) {
+  if (review.userId !== userId && role !== userRole.ADMIN) {
     throw new AppError("You are not authorized to update this review", 403);
   }
 
@@ -118,11 +192,7 @@ const updateReview = async (
 };
 
 // ── Delete Review ─────────────────────────────────────────────
-const deleteReview = async (
-  userId: string,
-  role: string,
-  reviewId: string
-) => {
+const deleteReview = async (userId: string, role: string, reviewId: string) => {
   const review = await prisma.review.findUnique({
     where: { id: reviewId },
   });
@@ -140,6 +210,7 @@ const deleteReview = async (
 };
 
 export const reviewService = {
+  getAllReviews,
   getMedicineReviews,
   createReview,
   updateReview,

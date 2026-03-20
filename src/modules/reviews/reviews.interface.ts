@@ -7,3 +7,10 @@ export interface UpdateReviewInput {
   rating?: number;
   comment?: string;
 }
+
+export interface ReviewQuery {
+  page?: string;
+  limit?: string;
+  search?: string;
+  rating?: string;
+}

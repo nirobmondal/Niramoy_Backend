@@ -5,17 +5,20 @@ import { reviewController } from "./reviews.controller";
 
 const reviewRouter = Router();
 
-// Update / delete own review (authenticated user)
+// Admin review management list
+reviewRouter.get("/", auth(userRole.ADMIN), reviewController.getAllReviews);
+
+// Update / delete own review (authenticated user and admin)
 reviewRouter.patch(
   "/:id",
-  auth(userRole.CUSTOMER),
-  reviewController.updateReview
+  auth(userRole.CUSTOMER, userRole.ADMIN),
+  reviewController.updateReview,
 );
 
 reviewRouter.delete(
   "/:id",
   auth(userRole.CUSTOMER, userRole.ADMIN),
-  reviewController.deleteReview
+  reviewController.deleteReview,
 );
 
 export default reviewRouter;
