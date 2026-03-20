@@ -4,6 +4,11 @@ Backend API for the Niramoy OTC medicine marketplace.
 
 Built with Node.js, Express, TypeScript, Prisma, PostgreSQL, and Better Auth (cookie-based sessions).
 
+## Live Links
+
+- Frontend Live: `https://niramoy-two.vercel.app/`
+- Backend Live: `https://niramoy-backend.onrender.com/`
+
 ## Features
 
 - Role-based marketplace APIs: `CUSTOMER`, `SELLER`, `ADMIN`
