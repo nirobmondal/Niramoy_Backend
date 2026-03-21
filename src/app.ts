@@ -20,7 +20,22 @@ const app = express();
 // global middlewares
 app.use(
   cors({
-    origin: [config.frontendUrl, "http://localhost:3000"],
+    origin(origin, callback) {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+
+      const normalizedOrigin = origin.replace(/\/+$/, "");
+      const isAllowed = config.frontendOrigins.includes(normalizedOrigin);
+
+      if (isAllowed) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error("CORS origin not allowed"));
+    },
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     credentials: true, // Allow credentials (cookies, authorization headers, etc.)
   }),
