@@ -4,21 +4,11 @@ import { prisma } from "./prisma";
 import { userRole } from "../constant/role";
 import { config } from "../config";
 
-const isHttpsDeployment = config.betterAuthUrl.startsWith("https://");
-
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
     provider: "postgresql",
   }),
-  trustedOrigins: config.frontendOrigins,
-  advanced: {
-    useSecureCookies: isHttpsDeployment,
-    defaultCookieAttributes: {
-      sameSite: isHttpsDeployment ? "none" : "lax",
-      secure: isHttpsDeployment,
-      httpOnly: true,
-    },
-  },
+  trustedOrigins: [config.frontendUrl, "http://localhost:3000"],
   user: {
     additionalFields: {
       role: {
