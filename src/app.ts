@@ -20,7 +20,7 @@ const app = express();
 // global middlewares
 app.use(
   cors({
-    origin: config.frontendUrl,
+    origin: [config.frontendUrl, "http://localhost:3000"],
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     credentials: true, // Allow credentials (cookies, authorization headers, etc.)
   }),
